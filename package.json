@@ -1,0 +1,32 @@
+{
+  "name": "quick-chat-local",
+  "version": "1.0.0",
+  "description": "An easy solution to quickly set up an instant messaging system",
+  "keywords": [
+    "chat"
+  ],
+  "license": "ISC",
+  "author": "pranavcl",
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "nodemon src/index.ts"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "express-xss-sanitizer": "^2.0.0",
+    "mongoose": "^8.15.1",
+    "nodemon": "^3.1.10",
+    "socket.io": "^4.8.1",
+    "ts-node": "^10.9.2",
+    "ts-typie": "^1.1.1",
+    "typescript": "^5.8.3",
+    "validator": "^13.15.15"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/validator": "^13.15.1"
+  }
+}
