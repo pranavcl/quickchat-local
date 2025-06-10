@@ -7,7 +7,9 @@ interface forgotPasswordRequest {
 };
 
 export default async (socket: Socket, data: forgotPasswordRequest) => {
-    if(!validator.isEmail(data.email)) {
+    const email = validator.trim(data.email || "");
+
+    if(!validator.isEmail(email)) {
         socket.emit("alert", {
             type: "error",
             message: "Please enter a valid email address.",
@@ -17,9 +19,9 @@ export default async (socket: Socket, data: forgotPasswordRequest) => {
     }
 
     try {
-        const user = await User.findOne({ email: data.email });
+        const user = await User.findOne({ email });
         if (user) {
-            console.log("🔑 Password reset requested for:", data.email);
+            console.log("🔑 Password reset requested for:", email);
 
             // TODO: Implement email sending logic here
         }

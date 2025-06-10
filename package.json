@@ -10,7 +10,9 @@
   "type": "commonjs",
   "main": "src/index.ts",
   "scripts": {
-    "test": "nodemon src/index.ts"
+    "build:client": "tsc src/client/script.ts",
+    "start:server": "ts-node src/index.ts",
+    "dev": "npm run build:client && npm run start:server"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -20,6 +22,7 @@
     "mongoose": "^8.15.1",
     "nodemon": "^3.1.10",
     "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "ts-node": "^10.9.2",
     "ts-typie": "^1.1.1",
     "typescript": "^5.8.3",

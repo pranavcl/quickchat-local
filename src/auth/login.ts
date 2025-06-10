@@ -3,6 +3,7 @@ import validator from "validator";
 import User from "../schemas/user";
 import bcrypt from "bcryptjs";
 import { sockets } from "../index";
+import messageSchema from "../schemas/message";
 
 interface LoginRequest {
     username: string;
@@ -54,11 +55,24 @@ export default async (socket: Socket, data: LoginRequest) => {
             console.log(`🛋️ ${socket.data.username} joined ${socket.data.room}`);
 
             for(let i = 0; i < sockets.length; i++) {
-                if(sockets[i].data.room == "lobby") {
+                if(sockets[i].data.room == "lobby" && sockets[i] !== socket) {
                     sockets[i].emit("message", {
-                        message: `[SERVER] ${user.username} has joined the lobby.`
+                        message: `${user.username} has joined the lobby.`,
+                        sender: "SERVER",
+						timestamp: new Date()
                     });
                 }
+            }
+
+            try {
+                const newMessage = new messageSchema({
+                    sender: "SERVER",
+                    message: `${user.username} has joined the lobby.`,
+                    room: "lobby"
+                });
+                await newMessage.save();
+            } catch (error) {
+                console.error("⚠️ Error saving message to DB:", error);
             }
 
             socket.emit("alert", {
@@ -66,6 +80,14 @@ export default async (socket: Socket, data: LoginRequest) => {
                 message: "Login successful!",
                 changeState: "chat"
             });
+
+            try {
+                const messages = await messageSchema.find({ room: "lobby" }).sort({ timestamp: -1 }).limit(50);
+                messages.reverse(); // Show latest messages at the bottom
+                socket.emit("message_history", messages);
+            } catch(error) {
+                console.error("⚠️ Error fetching message history:", error);
+            }
         
             return;
         }

@@ -1,4 +1,4 @@
-# Productive API License
+# QuickChat Local License
 
 Copyright (c) 2025 Pranav Mishra. All Rights Reserved.
 

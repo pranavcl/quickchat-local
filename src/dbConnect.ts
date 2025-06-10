@@ -10,7 +10,7 @@ export default async () => {
 			throw new Error("Connection to MongoDB failed");
 
 		const collections = await db.listCollections().toArray();
-		const collectionsRequired = ["users"];
+		const collectionsRequired = ["users", "messages"];
 
 		for(let i = 0; i < collectionsRequired.length; i++) {
 			if (!collections.some(col => col.name === collectionsRequired[i])) {
