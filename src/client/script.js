@@ -1,4 +1,4 @@
-var socket = io("http://localhost:3000");
+var socket = io("http://".concat(window.location.hostname, ":").concat(window.location.port || "2000"));
 socket.on('connect', function () {
     console.log('Connected to server');
 });

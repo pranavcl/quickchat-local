@@ -1,6 +1,6 @@
 //import { io } from "socket.io-client";
 declare const io: any; 
-const socket = io("http://localhost:3000");
+const socket = io(`http://${window.location.hostname}:${window.location.port || "2000"}`);
 
 socket.on('connect', () => {
     console.log('Connected to server');
