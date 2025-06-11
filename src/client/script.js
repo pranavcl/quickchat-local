@@ -28,6 +28,8 @@ var do_login = function () {
         return;
     }
     socket.emit("login", { username: username, password: password });
+    login_username.value = "";
+    login_password.value = "";
 };
 var do_register = function () {
     var register_username = document.getElementById("register_username");
@@ -47,6 +49,10 @@ var do_register = function () {
         return;
     }
     socket.emit("register", { username: username, email: email, password: password, confirmPassword: confirmPassword });
+    register_username.value = "";
+    register_email.value = "";
+    register_password.value = "";
+    register_confirm_password.value = "";
 };
 var do_forgot_password = function () {
     var forgot_email = document.getElementById("forgot_email");
@@ -56,6 +62,7 @@ var do_forgot_password = function () {
         return;
     }
     socket.emit("forgot_password", { email: email });
+    forgot_email.value = "";
 };
 var sendMessage = function () {
     var chat_input = document.getElementById("chat_input");
@@ -82,25 +89,28 @@ socket.on("alert", function (data) {
     changeState(data.changeState);
     alert(data.message);
 });
-socket.on("message", function (data) {
-    var chatBox = document.getElementById("chat_messages"); // This is a textarea
-    data.timestamp = new Date(data.timestamp); // Convert string back to Date object
-    var date = data.timestamp.toISOString().replace(/T/, ' ').replace(/\..+/, '+UTC');
-    var _a = data.timestamp.toISOString().slice(0, 10).split('-'), y = _a[0], m = _a[1], d = _a[2];
-    var time = data.timestamp.toISOString().slice(11, 19);
+var format_date = function (timestamp) {
+    var date = timestamp.toISOString().replace(/T/, ' ').replace(/\..+/, '+UTC');
+    var _a = timestamp.toISOString().slice(0, 10).split('-'), y = _a[0], m = _a[1], d = _a[2];
+    var time = timestamp.toISOString().slice(11, 19);
     var formatted = "".concat(d, "/").concat(m, "/").concat(y, " ").concat(time, "+UTC");
-    chatBox.value += "[".concat(data.sender, " ").concat(formatted, "]: ").concat(data.message, "\n");
+    return formatted;
+};
+var updateChatBox = function (message) {
+    var chatBox = document.getElementById("chat_messages");
+    chatBox.value += message;
     chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+};
+socket.on("message", function (data) {
+    data.timestamp = new Date(data.timestamp); // Convert string back to Date object
+    var formatted = format_date(data.timestamp);
+    updateChatBox("[".concat(data.sender, " ").concat(formatted, "]: ").concat(data.message, "\n"));
 });
 socket.on("private_message", function (data) {
-    var chatBox = document.getElementById("chat_messages");
-    chatBox.value += "".concat(data.sender, " whispered to you: ").concat(data.message, "\n");
-    chatBox.scrollTop = chatBox.scrollHeight;
+    updateChatBox("".concat(data.sender, " whispered to you: ").concat(data.message, "\n"));
 });
 socket.on("raw_message", function (data) {
-    var chatBox = document.getElementById("chat_messages");
-    chatBox.value += data.message + "\n";
-    chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+    updateChatBox(data.message + "\n");
 });
 socket.on("message_history", function (data) {
     var chatBox = document.getElementById("chat_messages");
@@ -108,12 +118,8 @@ socket.on("message_history", function (data) {
     for (var i = 0; i < data.length; i++) {
         var message = data[i];
         data[i].timestamp = new Date(data[i].timestamp); // Convert string back to Date object
-        var date = data[i].timestamp.toISOString().replace(/T/, ' ').replace(/\..+/, '+UTC');
-        var _a = data[i].timestamp.toISOString().slice(0, 10).split('-'), y = _a[0], m = _a[1], d = _a[2];
-        var time = data[i].timestamp.toISOString().slice(11, 19);
-        var formatted = "".concat(d, "/").concat(m, "/").concat(y, " ").concat(time, "+UTC");
-        chatBox.value += "[".concat(data[i].sender, " ").concat(formatted, "]: ").concat(data[i].message, "\n");
-        chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+        var formatted = format_date(data[i].timestamp);
+        updateChatBox("[".concat(data[i].sender, " ").concat(formatted, "]: ").concat(data[i].message, "\n"));
     }
 });
 socket.on("typing_status", function (data) {
@@ -136,6 +142,18 @@ socket.on("typing_status", function (data) {
         return;
     }
     typingIndicator.textContent = "";
+});
+socket.on("request_message_deletion", function (data) {
+    var chatBox = document.getElementById("chat_messages");
+    var text = chatBox.value;
+    data.timestamp = new Date(data.timestamp); // Convert string back to Date object
+    var formatted = format_date(data.timestamp);
+    var messageToDelete = "[".concat(data.sender, " ").concat(formatted, "]: ").concat(data.message, "\n");
+    if (text.includes(messageToDelete)) {
+        var updatedText = text.replace(messageToDelete, "[SERVER ".concat(formatted, "]: Message deleted by ").concat(data.sender, ".\n"));
+        chatBox.value = updatedText;
+        chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+    }
 });
 // Change state to menu on load
 window.onload = function () {

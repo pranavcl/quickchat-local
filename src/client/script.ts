@@ -133,30 +133,34 @@ interface messageData {
     timestamp: Date;
 }
 
-socket.on("message", (data: messageData) => {
-    const chatBox = document.getElementById("chat_messages") as HTMLTextAreaElement;// This is a textarea
-
-    data.timestamp = new Date(data.timestamp); // Convert string back to Date object
-
-    const date = data.timestamp.toISOString().replace(/T/, ' ').replace(/\..+/, '+UTC');
-    const [y, m, d] = data.timestamp.toISOString().slice(0, 10).split('-');
-    const time = data.timestamp.toISOString().slice(11, 19);
+const format_date = (timestamp: Date): string => {
+    const date = timestamp.toISOString().replace(/T/, ' ').replace(/\..+/, '+UTC');
+    const [y, m, d] = timestamp.toISOString().slice(0, 10).split('-');
+    const time = timestamp.toISOString().slice(11, 19);
     const formatted = `${d}/${m}/${y} ${time}+UTC`;
 
-    chatBox.value += `[${data.sender} ${formatted}]: ${data.message}\n`;
+    return formatted;
+}
+
+const updateChatBox = (message: string) => {
+    const chatBox = document.getElementById("chat_messages") as HTMLTextAreaElement;
+    chatBox.value += message;
     chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+}
+
+socket.on("message", (data: messageData) => {
+    data.timestamp = new Date(data.timestamp); // Convert string back to Date object
+    const formatted = format_date(data.timestamp);
+    
+    updateChatBox(`[${data.sender} ${formatted}]: ${data.message}\n`);
 });
 
 socket.on("private_message", (data: messageData) => {
-    const chatBox = document.getElementById("chat_messages") as HTMLTextAreaElement;
-    chatBox.value += `${data.sender} whispered to you: ${data.message}\n`;
-    chatBox.scrollTop = chatBox.scrollHeight;
+    updateChatBox(`${data.sender} whispered to you: ${data.message}\n`);
 });
 
 socket.on("raw_message", (data: messageData) => {
-    const chatBox = document.getElementById("chat_messages") as HTMLTextAreaElement;
-    chatBox.value += data.message + "\n";
-    chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+    updateChatBox(data.message + "\n");
 });
 
 socket.on("message_history", (data: messageData[]) => {
@@ -167,14 +171,9 @@ socket.on("message_history", (data: messageData[]) => {
         const message = data[i];
 
         data[i].timestamp = new Date(data[i].timestamp); // Convert string back to Date object
+        const formatted = format_date(data[i].timestamp);
 
-        const date = data[i].timestamp.toISOString().replace(/T/, ' ').replace(/\..+/, '+UTC');
-        const [y, m, d] = data[i].timestamp.toISOString().slice(0, 10).split('-');
-        const time = data[i].timestamp.toISOString().slice(11, 19);
-        const formatted = `${d}/${m}/${y} ${time}+UTC`;
-
-        chatBox.value += `[${data[i].sender} ${formatted}]: ${data[i].message}\n`;
-        chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+        updateChatBox(`[${data[i].sender} ${formatted}]: ${data[i].message}\n`);
     }
 });
 
@@ -204,6 +203,23 @@ socket.on("typing_status", (data: string[]) => {
 
     typingIndicator.textContent = "";
 });
+
+socket.on("request_message_deletion", (data: messageData) => {
+    const chatBox = document.getElementById("chat_messages") as HTMLTextAreaElement;
+    const text = chatBox.value;
+
+    data.timestamp = new Date(data.timestamp); // Convert string back to Date object
+
+    const formatted = format_date(data.timestamp);
+
+    const messageToDelete = `[${data.sender} ${formatted}]: ${data.message}\n`;
+    if(text.includes(messageToDelete)) {
+        const updatedText = text.replace(messageToDelete, `[SERVER ${formatted}]: Message deleted by ${data.sender}.\n`);
+        chatBox.value = updatedText;
+        chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+    }
+});
+    
 
 // Change state to menu on load
 

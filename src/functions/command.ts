@@ -10,9 +10,8 @@ export default async (socket: Socket, message: String) => {
 
     if(command === "help") {
         socket.emit("private_message", {
-            message: "Available commands: /help, /logout, /join <room>, /whereami, /online, /whisper <username> <message>, /loadhistory <number of messages>",
-            sender: "SERVER",
-            timestamp: new Date()
+            message: "Available commands: /help, /logout, /join <room>, /whereami, /online, /whisper <username> <message>, /loadhistory <number of messages>, /delete <substring in message>",
+            sender: "SERVER"
         });
     } 
     
@@ -25,8 +24,7 @@ export default async (socket: Socket, message: String) => {
         if(!roomName) {
             socket.emit("private_message", {
                 message: "Please specify a room name to join.",
-                sender: "SERVER",
-                timestamp: new Date()
+                sender: "SERVER"
             });
             return;
         }
@@ -84,14 +82,12 @@ export default async (socket: Socket, message: String) => {
         if(!socket.data.room) {
             socket.emit("private_message", {
                 message: "You are not in any room. Use /join <room> to join a room.",
-                sender: "SERVER",
-                timestamp: new Date()
+                sender: "SERVER"
             });
         } else {
             socket.emit("private_message", {
                 message: "You are currently in the room: " + socket.data.room,
-                sender: "SERVER",
-                timestamp: new Date()
+                sender: "SERVER"
             }); 
         }
     } 
@@ -101,15 +97,13 @@ export default async (socket: Socket, message: String) => {
         if(onlineUsers.length === 0) {
             socket.emit("private_message", {
                 message: "No users are currently online in this room.",
-                sender: "SERVER",
-                timestamp: new Date()
+                sender: "SERVER"
             });
         } else {
             const userList = onlineUsers.map(s => s.data.username).join(", ");
             socket.emit("private_message", {
                 message: `${onlineUsers.length} online in this room: ${userList}`,
-                sender: "SERVER",
-                timestamp: new Date()
+                sender: "SERVER"
             });
         }
     }
@@ -121,8 +115,7 @@ export default async (socket: Socket, message: String) => {
         if(!targetUsername || !whisperMessage) {
             socket.emit("private_message", {
                 message: "Usage: /whisper <username> <message>",
-                sender: "SERVER",
-                timestamp: new Date()
+                sender: "SERVER"
             });
             return;
         }
@@ -130,8 +123,7 @@ export default async (socket: Socket, message: String) => {
         if(targetUsername === socket.data.username) {
             socket.emit("private_message", {
                 message: "You cannot whisper to yourself!",
-                sender: "SERVER",
-                timestamp: new Date()
+                sender: "SERVER"
             });
             return;
         }
@@ -140,15 +132,13 @@ export default async (socket: Socket, message: String) => {
         if(!targetSocket) {
             socket.emit("private_message", {
                 message: `User ${targetUsername} is not online.`,
-                sender: "SERVER",
-                timestamp: new Date()
+                sender: "SERVER"
             });
             return;
         }
         targetSocket.emit("private_message", {
             message: whisperMessage,
-            sender: socket.data.username,
-            timestamp: new Date()
+            sender: socket.data.username
         });
 
         socket.emit("raw_message", {
@@ -162,8 +152,7 @@ export default async (socket: Socket, message: String) => {
         if(!parts[1] || isNaN(parseInt(parts[1]))) {
             socket.emit("private_message", {
                 message: "Usage: /loadhistory <number of messages>",
-                sender: "SERVER",
-                timestamp: new Date()
+                sender: "SERVER"
             });
             return;
         }
@@ -177,11 +166,52 @@ export default async (socket: Socket, message: String) => {
         }
     }
 
+    else if(command === "delete") {
+        const substring = message.slice(8).trim();
+        if(!substring) {
+            socket.emit("private_message", {
+                message: "Usage: /delete <substring in message>",
+                sender: "SERVER"
+            });
+            return;
+        }
+
+        try {
+            const message = await messageSchema.findOne({ room: socket.data.room, sender: socket.data.username, message: { $regex: substring, $options: 'i' } });
+            if(!message) {
+                socket.emit("private_message", {
+                    message: `No message found containing "${substring}" in room ${socket.data.room}.`,
+                    sender: "SERVER"
+                });
+                return;
+            }
+
+            console.log(`🗑️ Message deleted by ${socket.data.username}: ${message.message}`);
+
+            for(let i = 0; i < sockets.length; i++) { 
+                if(sockets[i].data.room != socket.data.room) continue;
+                sockets[i].emit("request_message_deletion", {
+                    sender: message.sender,
+                    room: message.room,
+                    message: message.message,
+                    timestamp: message.timestamp instanceof Date ? message.timestamp.toISOString() : message.timestamp
+                });
+            }
+
+            await message.updateOne({sender: "SERVER", message: `Message deleted by ${socket.data.username}.`});
+        } catch (error) {
+            console.error("⚠️ Error fetching messages for deletion:", error);
+            socket.emit("private_message", {
+                message: "An error occurred while trying to delete messages.",
+                sender: "SERVER"
+            });
+        }
+    }
+
     else {
         socket.emit("private_message", {
             message: "Unknown command. Type /help for a list of commands.",
-            sender: "SERVER",
-            timestamp: new Date()
+            sender: "SERVER"
         });
         return;
     }
