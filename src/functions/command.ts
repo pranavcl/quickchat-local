@@ -3,7 +3,30 @@ import { sockets } from "..";
 import messageSchema from "../schemas/message";
 import logout from "./logout";
 
-export default async (socket: Socket, message: String) => {
+const broadcastToRoom = async (room: string, message: string) => {
+    for(let i = 0; i < sockets.length; i++) {
+        if(sockets[i].data.room == room) {
+            sockets[i].emit("message", {
+                message: message,
+                sender: "SERVER",
+                timestamp: new Date()
+            });
+        }
+    }
+
+    try {
+        const newMessage = new messageSchema({
+            sender: "SERVER",
+            message: message,
+            room: room
+        });
+        await newMessage.save();
+    } catch (error) {
+        console.error("⚠️ Error saving message to DB:", error);
+    }
+}
+
+export default async (socket: Socket, message: string) => {
     const command = message.slice(1).trim().split(" ")[0].toLowerCase();
 
     console.log(`💻 ${socket.data.username} issued command: ${message.slice(1).trim().toLowerCase()}`);
@@ -31,49 +54,11 @@ export default async (socket: Socket, message: String) => {
 
         console.log(`🚪 ${socket.data.username} left ${socket.data.room}`);
 
-        for(let i = 0; i < sockets.length; i++) {
-            if(sockets[i].data.room == socket.data.room) {
-                sockets[i].emit("message", {
-                    message: `${socket.data.username} has left the room ${socket.data.room}.`,
-                    sender: "SERVER",
-                    timestamp: new Date()
-                });
-            }
-        }
-
-        try {
-            const newMessage = new messageSchema({
-                sender: "SERVER",
-                message: `${socket.data.username} has left the room ${socket.data.room}.`,
-                room: socket.data.room
-            });
-            await newMessage.save();
-        } catch (error) {
-            console.error("⚠️ Error saving message to DB:", error);
-        }
+        broadcastToRoom(socket.data.room, `${socket.data.username} has left the room ${socket.data.room}.`);
 
         socket.data.room = roomName;
         
-        for(let i = 0; i < sockets.length; i++) {
-            if(sockets[i].data.room == socket.data.room) {
-                sockets[i].emit("message", {
-                    message: `${socket.data.username} has joined the room ${socket.data.room}.`,
-                    sender: "SERVER",
-                    timestamp: new Date()
-                });
-            }
-        }
-
-        try {
-            const newMessage = new messageSchema({
-                sender: "SERVER",
-                message: `${socket.data.username} has joined the room ${socket.data.room}.`,
-                room: socket.data.room
-            });
-            await newMessage.save();
-        } catch (error) {
-            console.error("⚠️ Error saving message to DB:", error);
-        }
+        broadcastToRoom(roomName, `${socket.data.username} has joined the room ${socket.data.room}.`);
 
         console.log(`🛋️ ${socket.data.username} joined room ${roomName}`);
     } 
@@ -158,7 +143,7 @@ export default async (socket: Socket, message: String) => {
         }
 
         try {
-            const messages = await messageSchema.find({ room: "lobby" }).sort({ timestamp: -1 }).limit(parseInt(parts[1]));
+            const messages = await messageSchema.find({ room: socket.data.room }).sort({ timestamp: -1 }).limit(parseInt(parts[1]));
             messages.reverse(); // Show latest messages at the bottom
             socket.emit("message_history", messages);
         } catch(error) {

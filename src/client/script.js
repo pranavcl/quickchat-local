@@ -3,9 +3,12 @@ socket.on('connect', function () {
     console.log('Connected to server');
 });
 var states = [];
+var chat_input;
 var chatInput = "";
 var prevChatInput = "";
+var messages = 0;
 var currentState = "menu"; // Default state
+var maximumMessageLength = 500;
 var changeState = function (state) {
     for (var i = 0; i < states.length; i++) {
         var element = document.getElementById(states[i]);
@@ -65,12 +68,14 @@ var do_forgot_password = function () {
     forgot_email.value = "";
 };
 var sendMessage = function () {
-    var chat_input = document.getElementById("chat_input");
+    if (!chat_input) {
+        return;
+    }
     var message = chat_input.value;
     if (!message) {
         return;
     }
-    if (message.length > 500) {
+    if (message.length > maximumMessageLength) {
         alert("Message is too long. Please limit to 500 characters.");
         return;
     }
@@ -105,6 +110,7 @@ socket.on("message", function (data) {
     data.timestamp = new Date(data.timestamp); // Convert string back to Date object
     var formatted = format_date(data.timestamp);
     updateChatBox("[".concat(data.sender, " ").concat(formatted, "]: ").concat(data.message, "\n"));
+    messages++;
 });
 socket.on("private_message", function (data) {
     updateChatBox("".concat(data.sender, " whispered to you: ").concat(data.message, "\n"));
@@ -120,6 +126,7 @@ socket.on("message_history", function (data) {
         data[i].timestamp = new Date(data[i].timestamp); // Convert string back to Date object
         var formatted = format_date(data[i].timestamp);
         updateChatBox("[".concat(data[i].sender, " ").concat(formatted, "]: ").concat(data[i].message, "\n"));
+        messages++;
     }
 });
 socket.on("typing_status", function (data) {
@@ -157,23 +164,22 @@ socket.on("request_message_deletion", function (data) {
 });
 // Change state to menu on load
 window.onload = function () {
+    chat_input = document.getElementById("chat_input");
     var body = document.querySelector("body");
-    var divs = body.querySelectorAll("div");
+    var divs = body.querySelectorAll(".card");
     for (var i = 0; i < divs.length; i++) {
         states.push(divs[i].id);
     }
-    states.pop(); // Remove the last element which is the body itself
     changeState("menu");
-};
-document.onkeyup = function (e) {
-    if (e.key === "Enter") {
-        sendMessage();
-    }
+    chat_input.onkeyup = function (e) {
+        if (e.key === "Enter") {
+            sendMessage();
+        }
+    };
 };
 setInterval(function () {
-    if (currentState !== "chat")
+    if (currentState !== "chat" || !chat_input)
         return; // Only check typing in chat state
-    var chat_input = document.getElementById("chat_input");
     chatInput = chat_input.value;
     if (chatInput != prevChatInput) {
         socket.emit("typing");

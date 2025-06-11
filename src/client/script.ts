@@ -8,10 +8,14 @@ socket.on('connect', () => {
 
 const states: string[] = [];
 
+let chat_input: HTMLInputElement | undefined;
 let chatInput = "";
 let prevChatInput = "";
+let messages = 0;
 
 let currentState = "menu"; // Default state
+
+const maximumMessageLength = 500;
 
 const changeState = (state: string) => {
     for(let i = 0; i < states.length; i++) {
@@ -89,7 +93,9 @@ const do_forgot_password = () => {
 };
 
 const sendMessage = () => {
-    const chat_input = document.getElementById("chat_input") as HTMLInputElement;
+    if(!chat_input) {
+        return;
+    }
 
     const message = chat_input.value;
 
@@ -97,7 +103,7 @@ const sendMessage = () => {
         return;
     }
 
-    if(message.length > 500) {
+    if(message.length > maximumMessageLength) {
         alert("Message is too long. Please limit to 500 characters.");
         return;
     }
@@ -153,6 +159,7 @@ socket.on("message", (data: messageData) => {
     const formatted = format_date(data.timestamp);
     
     updateChatBox(`[${data.sender} ${formatted}]: ${data.message}\n`);
+    messages++;
 });
 
 socket.on("private_message", (data: messageData) => {
@@ -174,6 +181,7 @@ socket.on("message_history", (data: messageData[]) => {
         const formatted = format_date(data[i].timestamp);
 
         updateChatBox(`[${data[i].sender} ${formatted}]: ${data[i].message}\n`);
+        messages++;
     }
 });
 
@@ -224,26 +232,26 @@ socket.on("request_message_deletion", (data: messageData) => {
 // Change state to menu on load
 
 window.onload = () => {
+    chat_input = document.getElementById("chat_input") as HTMLInputElement
+
     const body = document.querySelector("body") as HTMLBodyElement;
-    const divs = body.querySelectorAll("div");
+    const divs = body.querySelectorAll(".card");
     for(let i = 0; i < divs.length; i++) {
         states.push(divs[i].id);
     }
-    states.pop(); // Remove the last element which is the body itself
 
     changeState("menu");
+
+    chat_input.onkeyup = (e) => {
+        if (e.key === "Enter") {
+            sendMessage();
+        }
+    }
 };
 
-document.onkeyup = (e) => {
-    if (e.key === "Enter") {
-        sendMessage();
-    }
-}
-
 setInterval(() => {
-    if(currentState !== "chat") return; // Only check typing in chat state
+    if(currentState !== "chat" || !chat_input) return; // Only check typing in chat state
 
-    const chat_input = document.getElementById("chat_input") as HTMLInputElement;
     chatInput = chat_input.value;
 
     if(chatInput != prevChatInput) {
