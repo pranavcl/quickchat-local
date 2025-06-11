@@ -8,6 +8,7 @@ import http from "http";
 import login from "./auth/login";
 import register from "./auth/register";
 import forgot_password from "./auth/forgot_password";
+import reset_password from "./auth/reset_password";
 
 import typing from "./functions/typing";
 import logout from "./functions/logout";
@@ -32,6 +33,20 @@ app.get("/", (req: express.Request, res: express.Response) => {
 	res.sendFile(__dirname + "/client/index.html");
 });
 app.use("/client", express.static(__dirname + "/client"));
+
+app.use(express.urlencoded({ extended: true }));
+// app.use(express.json());
+
+app.get("/reset-password", (req: express.Request, res: express.Response) => {
+	/* req.body.token = req.query.token as string || "";
+	req.body.email = req.query.email as string || ""; */
+
+	res.sendFile(__dirname + "/client/reset-password.html");
+});
+
+app.post("/reset-password", (req: express.Request, res: express.Response) => {
+	reset_password(req, res);
+});
 
 server.listen(port, () => {
 	console.log("✅ Server started on port " + port);
@@ -62,6 +77,10 @@ const LAST_FORGOT_WINDOW = 3; // 3 minutes
 
 const TYPING_COOLDOWN = 0.5; // 0.5 seconds
 const MESSAGES_COOLDOWN = 0.5; // 0.5 seconds
+
+// Password reset
+
+const passwordResetTokens: { [email: string]: { token: string; expires: number; } } = {};
 
 io.on("connection", (socket) => {
 	console.log("↩️ A user connected, ID: " + socket.id);
@@ -195,4 +214,4 @@ setInterval(() => {
 	rooms_typing = {};
 }, 1000);
 
-export { sockets, rooms_typing };
+export { sockets, rooms_typing, passwordResetTokens };
