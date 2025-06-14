@@ -54,8 +54,8 @@ export default async (socket: Socket, data: RegisterRequest) => {
     try {
         const salt = await bcrypt.genSalt(10);
 
-        let existingUser = await User.findOne({username: username});
-        let existingEmail = await User.findOne({email: email});
+        let existingUser = await User.findOne({username: {$regex: new RegExp(username, "i")}});
+        let existingEmail = await User.findOne({email: email.toLowerCase()});
 
         if(existingUser || existingEmail) {
             socket.emit("alert", { 
@@ -66,7 +66,7 @@ export default async (socket: Socket, data: RegisterRequest) => {
             return;
         }
 
-        const user = new User({username, password: await bcrypt.hash(password, salt), email});
+        const user = new User({username, password: await bcrypt.hash(password, salt), email: email.toLowerCase()});
         await user.save();
 
         console.log("✨ User registered:", user.username);

@@ -10,7 +10,7 @@ interface forgotPasswordRequest {
 };
 
 export default async (socket: Socket, data: forgotPasswordRequest) => {
-    const email = validator.trim(data.email || "");
+    let email = validator.trim(data.email || "");
 
     if(!validator.isEmail(email)) {
         socket.emit("alert", {
@@ -35,6 +35,8 @@ export default async (socket: Socket, data: forgotPasswordRequest) => {
 	} as nodemailer.TransportOptions);
 
     try {
+        email = email.toLowerCase();
+
         const user = await User.findOne({ email });
         if (user) {
             console.log("🔑 Password reset requested for:", email);
